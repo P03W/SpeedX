@@ -10,17 +10,17 @@ import net.minecraft.item.ItemStack
 import net.minecraft.util.ActionResult
 import net.minecraft.util.Arm
 import net.minecraft.util.Hand
-import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Box
-import net.minecraft.util.math.Direction
-import net.minecraft.util.math.MathHelper
-import net.minecraft.util.math.Vec3d
+import net.minecraft.util.math.*
 import net.minecraft.world.World
 
 
 class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : LivingEntity(entityType, world) {
     private var lastForwardsSpeed = 0.0
     private var lastDrift = 0.0
+    private var lastTurnAmount = 0.0f
+
+    private var lastY = 0
+    private var verticalGainTicks = 0
 
     var wheelPosition = 0.0f
 
@@ -70,35 +70,67 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
 
                 if (forwards <= 0.0f) {
                     // Going backwards is very slow
-                    forwards *= 0.1f
+                    forwards *= backwardsSpeedMultiplier
                 }
 
                 if (forwards > 0.15) {
                     // Rotate at a higher rate
-                    yaw -= ent.sidewaysSpeed * forwardsTurnSpeed
+                    val expectedTurnAmount = ent.sidewaysSpeed * forwardsTurnSpeed
+                    val actualTurnAmount = MathHelper.lerp(turnDelta, lastTurnAmount.toDouble(), expectedTurnAmount.toDouble()).toFloat()
+                    lastTurnAmount = actualTurnAmount
+
+                    yaw -= actualTurnAmount
                     prevYaw = yaw
-                    ent.yaw -= ent.sidewaysSpeed * forwardsTurnSpeed
+                    ent.yaw -= actualTurnAmount
                 }
                 if (forwards < -0.05) {
                     // Rotate at a slower rate (Also reversed)
-                    yaw += ent.sidewaysSpeed * backwardsTurnSpeed
-                    ent.yaw += ent.sidewaysSpeed * backwardsTurnSpeed
+                    val expectedTurnAmount = ent.sidewaysSpeed * backwardsTurnSpeed
+                    val actualTurnAmount = MathHelper.lerp(turnDelta, lastTurnAmount.toDouble(), expectedTurnAmount.toDouble()).toFloat()
+                    lastTurnAmount = actualTurnAmount
+
+                    yaw += actualTurnAmount
+                    prevYaw = yaw
+                    ent.yaw += actualTurnAmount
                 }
 
+                bodyYaw = yaw
                 setRotation(yaw, pitch)
-                flyingSpeed = movementSpeed * 0.3f
-                val lerpedSpeed = MathHelper.lerp(speedDelta, lastForwardsSpeed, forwards)
-                val drift = if (forwards > 0.9) {
+
+                val f: Float = MathHelper.wrapDegrees(ent.yaw - yaw)
+                val g = MathHelper.clamp(f, -45.0f, 45.0f)
+                ent.yaw += g - f
+
+                flyingSpeed = movementSpeed * 0.2f
+
+                val lerpedSpeed = if (lastForwardsSpeed < 0.95) {
+                    MathHelper.lerp(startupSpeedDelta, lastForwardsSpeed, forwards)
+                } else {
+                    MathHelper.lerp(extraSpeedDelta, lastForwardsSpeed, forwards * extraSpeedMultiplier)
+                }
+
+                val drift = if (lerpedSpeed > driftSpeedMinimum) {
                     MathHelper.lerp(driftDelta, lastDrift, -ent.sidewaysSpeed.toDouble() * driftCapMultiplier)
                 } else 0.0
                 lastDrift = drift
+
                 if (isLogicalSideForUpdatingMovement) {
+                    if (lastY != blockPos.y && isOnGround) {
+                        verticalGainTicks += 2
+                    } else if (verticalGainTicks > 0){
+                        verticalGainTicks -= 1
+                    }
+                    lastY = blockPos.y
+
                     movementSpeed = getAttributeValue(EntityAttributes.GENERIC_MOVEMENT_SPEED).toFloat()
                     super.travel(
                             Vec3d(
                                     drift,
-                                    0.0,
-                                    lerpedSpeed - (drift / 4)
+                                    if (!isOnGround) {
+                                        flyingSpeed = movementSpeed
+                                        verticalGainTicks.toDouble() * 10000
+                                    } else 0.0,
+                                    lerpedSpeed - (drift * driftSpeedReductionMultiplier)
                             )
                     )
                     lastForwardsSpeed = lerpedSpeed
@@ -185,7 +217,7 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
         super.updatePassengerPosition(passenger)
         if (hasPassenger(passenger)) {
             // Translate 0.45 backwards, accounting for yaw
-            val height = y + mountedHeightOffset + passenger.heightOffset - 0.1
+            val height = y + mountedHeightOffset + passenger.heightOffset - 0.15
             val backwardsOffset = Vec3d(0.0, 0.0, -0.45).rotateY(Math.toRadians(-bodyYaw.toDouble()).toFloat())
             passenger.updatePosition(x + backwardsOffset.getX(), height, z + backwardsOffset.getZ())
         }
@@ -198,15 +230,25 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
     companion object {
         fun createBikeAttributes(): DefaultAttributeContainer.Builder? {
             val attributes = createLivingAttributes()
-            attributes.add(EntityAttributes.GENERIC_MOVEMENT_SPEED, 0.27)
+            attributes.add(EntityAttributes.GENERIC_MOVEMENT_SPEED, baseSpeed)
             attributes.add(EntityAttributes.GENERIC_MAX_HEALTH, 1.0)
             return attributes
         }
 
+        private const val baseSpeed = 0.3
+
         const val forwardsTurnSpeed = 4.5f
-        const val backwardsTurnSpeed = 1.5f
-        const val driftDelta = 0.17
-        const val driftCapMultiplier = 2
-        const val speedDelta = 0.12
+        const val backwardsTurnSpeed = 2.2f
+        const val turnDelta = 0.22
+
+        const val driftDelta = 0.07
+        const val driftCapMultiplier = 1.7
+        const val driftSpeedReductionMultiplier = 0.25
+        const val driftSpeedMinimum = 1.3
+
+        const val startupSpeedDelta = 0.17
+        const val extraSpeedDelta = 0.08
+        const val extraSpeedMultiplier = 1.5
+        const val backwardsSpeedMultiplier = 0.2
     }
 }

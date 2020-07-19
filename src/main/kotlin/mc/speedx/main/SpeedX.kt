@@ -18,7 +18,7 @@ class SpeedX : ModInitializer {
     override fun onInitialize() {
         EntityRendererRegistry.INSTANCE.register(
             BIKE
-        ) { dispatcher: EntityRenderDispatcher?, context: EntityRendererRegistry.Context? ->
+        ) { dispatcher: EntityRenderDispatcher?, _: EntityRendererRegistry.Context? ->
             BikeEntityRenderer(
                 dispatcher!!
             )
