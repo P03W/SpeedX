@@ -19,6 +19,8 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
     private var lastDrift = 0.0
     private var lastTurnAmount = 0.0f
 
+    private var airTrackedSpeed = 0.0
+
     private var lastY = 0
     private var verticalGainTicks = 0
 
@@ -33,7 +35,7 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
     }
 
     override fun equipStack(slot: EquipmentSlot?, stack: ItemStack?) {
-        TODO("Not yet implemented")
+        throw UnsupportedOperationException()
     }
 
     override fun damage(source: DamageSource?, amount: Float): Boolean {
@@ -73,25 +75,33 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                     forwards *= backwardsSpeedMultiplier
                 }
 
-                if (forwards > 0.15) {
-                    // Rotate at a higher rate
-                    val expectedTurnAmount = ent.sidewaysSpeed * forwardsTurnSpeed
-                    val actualTurnAmount = MathHelper.lerp(turnDelta, lastTurnAmount.toDouble(), expectedTurnAmount.toDouble()).toFloat()
-                    lastTurnAmount = actualTurnAmount
+                if (isOnGround) {
+                    if (forwards > 0.15) {
+                        // Rotate at a higher rate
+                        val expectedTurnAmount = ent.sidewaysSpeed * forwardsTurnSpeed
+                        val actualTurnAmount =
+                            MathHelper.lerp(turnDelta, lastTurnAmount.toDouble(), expectedTurnAmount.toDouble())
+                                .toFloat()
+                        lastTurnAmount = actualTurnAmount
 
-                    yaw -= actualTurnAmount
-                    prevYaw = yaw
-                    ent.yaw -= actualTurnAmount
-                }
-                if (forwards < -0.05) {
-                    // Rotate at a slower rate (Also reversed)
-                    val expectedTurnAmount = ent.sidewaysSpeed * backwardsTurnSpeed
-                    val actualTurnAmount = MathHelper.lerp(turnDelta, lastTurnAmount.toDouble(), expectedTurnAmount.toDouble()).toFloat()
-                    lastTurnAmount = actualTurnAmount
+                        yaw -= actualTurnAmount
+                        prevYaw = yaw
+                        ent.yaw -= actualTurnAmount
+                    }
+                    if (forwards < -0.05) {
+                        // Rotate at a slower rate (Also reversed)
+                        val expectedTurnAmount = ent.sidewaysSpeed * backwardsTurnSpeed
+                        val actualTurnAmount =
+                            MathHelper.lerp(turnDelta, lastTurnAmount.toDouble(), expectedTurnAmount.toDouble())
+                                .toFloat()
+                        lastTurnAmount = actualTurnAmount
 
-                    yaw += actualTurnAmount
-                    prevYaw = yaw
-                    ent.yaw += actualTurnAmount
+                        yaw += actualTurnAmount
+                        prevYaw = yaw
+                        ent.yaw += actualTurnAmount
+                    }
+                } else {
+                    lastTurnAmount = 0F
                 }
 
                 bodyYaw = yaw
@@ -126,6 +136,13 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                     lastY = blockPos.y
 
                     movementSpeed = getAttributeValue(EntityAttributes.GENERIC_MOVEMENT_SPEED).toFloat()
+
+                    var moveSpeed = lerpedSpeed - (drift * driftSpeedReductionMultiplier)
+                    if (isOnGround) {
+                        airTrackedSpeed = moveSpeed
+                    } else {
+                        moveSpeed = airTrackedSpeed
+                    }
                     super.travel(
                             Vec3d(
                                     drift,
@@ -133,7 +150,7 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                                         flyingSpeed = (movementSpeed * 0.6).toFloat()
                                         verticalGainTicks.toDouble()
                                     } else 0.0,
-                                    lerpedSpeed - (drift * driftSpeedReductionMultiplier)
+                                moveSpeed
                             )
                     )
                     lastForwardsSpeed = lerpedSpeed
