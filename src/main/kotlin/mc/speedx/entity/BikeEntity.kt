@@ -116,7 +116,7 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
 
                 if (isLogicalSideForUpdatingMovement) {
                     if (lastY != blockPos.y && isOnGround) {
-                        verticalGainTicks += 2
+                        verticalGainTicks += 1
                     } else if (verticalGainTicks > 0 && !isOnGround) {
                         setNoGravity(true)
                         verticalGainTicks -= 1
@@ -130,7 +130,8 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                             Vec3d(
                                     drift,
                                     if (hasNoGravity()) {
-                                        1.1
+                                        flyingSpeed = (movementSpeed * 0.6).toFloat()
+                                        verticalGainTicks.toDouble()
                                     } else 0.0,
                                     lerpedSpeed - (drift * driftSpeedReductionMultiplier)
                             )
