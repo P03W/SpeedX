@@ -125,6 +125,22 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                 lastDrift = drift
 
                 if (isLogicalSideForUpdatingMovement) {
+                    movementSpeed = getAttributeValue(EntityAttributes.GENERIC_MOVEMENT_SPEED).toFloat()
+
+                    var moveSpeed = lerpedSpeed - (drift * driftSpeedReductionMultiplier)
+                    if (isOnGround) {
+                        airTrackedSpeed = moveSpeed
+                    } else {
+                        moveSpeed = airTrackedSpeed
+                    }
+                    super.travel(
+                        Vec3d(
+                            drift,
+                            0.0,
+                            moveSpeed
+                        )
+                    )
+
                     if (lastY != blockPos.y && isOnGround) {
                         verticalGainTicks += 1
                     } else if (verticalGainTicks > 0 && !isOnGround) {
@@ -135,24 +151,17 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                     }
                     lastY = blockPos.y
 
-                    movementSpeed = getAttributeValue(EntityAttributes.GENERIC_MOVEMENT_SPEED).toFloat()
-
-                    var moveSpeed = lerpedSpeed - (drift * driftSpeedReductionMultiplier)
-                    if (isOnGround) {
-                        airTrackedSpeed = moveSpeed
-                    } else {
-                        moveSpeed = airTrackedSpeed
-                    }
                     super.travel(
-                            Vec3d(
-                                    drift,
-                                    if (hasNoGravity()) {
-                                        flyingSpeed = (movementSpeed * 0.6).toFloat()
-                                        verticalGainTicks.toDouble()
-                                    } else 0.0,
-                                moveSpeed
-                            )
+                        Vec3d(
+                            0.0,
+                            if (hasNoGravity()) {
+                                flyingSpeed = (movementSpeed * 0.6).toFloat()
+                                verticalGainTicks.toDouble()
+                            } else 0.0,
+                            0.0
+                        )
                     )
+
                     lastForwardsSpeed = lerpedSpeed
                 } else if (ent is PlayerEntity) {
                     velocity = Vec3d.ZERO
