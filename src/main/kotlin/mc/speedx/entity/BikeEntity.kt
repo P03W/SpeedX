@@ -12,6 +12,8 @@ import net.minecraft.util.Arm
 import net.minecraft.util.Hand
 import net.minecraft.util.math.*
 import net.minecraft.world.World
+import kotlin.math.log
+import kotlin.math.max
 
 
 class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : LivingEntity(entityType, world) {
@@ -111,8 +113,6 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                 val g = MathHelper.clamp(f, -45.0f, 45.0f)
                 ent.yaw += g - f
 
-                flyingSpeed = movementSpeed * 0.2f
-
                 val lerpedSpeed = if (lastForwardsSpeed < 0.95) {
                     MathHelper.lerp(startupSpeedDelta, lastForwardsSpeed, forwards)
                 } else {
@@ -126,6 +126,7 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
 
                 if (isLogicalSideForUpdatingMovement) {
                     movementSpeed = getAttributeValue(EntityAttributes.GENERIC_MOVEMENT_SPEED).toFloat()
+                    flyingSpeed = (movementSpeed * 0.3).toFloat()
 
                     var moveSpeed = lerpedSpeed - (drift * driftSpeedReductionMultiplier)
                     if (isOnGround) {
@@ -137,13 +138,13 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                         Vec3d(
                             drift,
                             0.0,
-                            moveSpeed
+                            moveSpeed / 2
                         )
                     )
 
                     if (lastY != blockPos.y && isOnGround) {
-                        verticalGainTicks += 1
-                    } else if (verticalGainTicks > 0 && !isOnGround) {
+                        verticalGainTicks += 2
+                    } else if (verticalGainTicks > 6 && !isOnGround) {
                         setNoGravity(true)
                         verticalGainTicks -= 1
                     } else {
@@ -155,10 +156,13 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                         Vec3d(
                             0.0,
                             if (hasNoGravity()) {
-                                flyingSpeed = (movementSpeed * 0.6).toFloat()
-                                verticalGainTicks.toDouble()
+                                val verticalMomentum =
+                                    log(max(verticalGainTicks.toDouble(), 60.0) / 6.0, 10.0)
+                                if (verticalMomentum > 0) {
+                                    verticalMomentum
+                                } else 0.0
                             } else 0.0,
-                            0.0
+                            moveSpeed / 2
                         )
                     )
 
@@ -276,8 +280,8 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
         const val driftSpeedMinimum = 1.3
 
         const val startupSpeedDelta = 0.17
-        const val extraSpeedDelta = 0.08
-        const val extraSpeedMultiplier = 1.5
+        const val extraSpeedDelta = 0.05
+        const val extraSpeedMultiplier = 1.4
         const val backwardsSpeedMultiplier = 0.2
     }
 }
