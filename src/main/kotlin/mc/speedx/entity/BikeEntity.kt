@@ -167,12 +167,15 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                     )
 
                     if (lastY != blockPos.y && isOnGround) {
-                        verticalGainTicks += 2
-                    } else if (verticalGainTicks > 6 && !isOnGround) {
+                        verticalGainTicks += 3
+                    } else if (verticalGainTicks > 10 && !isOnGround) {
                         setNoGravity(true)
                         verticalGainTicks -= 1
                     } else {
                         setNoGravity(false)
+                    }
+                    if (verticalGainTicks > 40) {
+                        verticalGainTicks = 40
                     }
                     lastY = blockPos.y
 
@@ -181,7 +184,7 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
                             0.0,
                             if (hasNoGravity()) {
                                 val verticalMomentum =
-                                    log(max(verticalGainTicks.toDouble(), 60.0) / 6.0, 10.0)
+                                    log(max(verticalGainTicks.toDouble(), 60.0) / 6.0, 10.0) * 1.25
                                 if (verticalMomentum > 0) {
                                     verticalMomentum
                                 } else 0.0
@@ -292,20 +295,20 @@ class BikeEntity(entityType: EntityType<out LivingEntity>, world: World?) : Livi
             return attributes
         }
 
-        private const val baseSpeed = 0.3
+        private const val baseSpeed = 0.27
 
         const val forwardsTurnSpeed = 4.5f
         const val backwardsTurnSpeed = 2.2f
         const val turnDelta = 0.22
 
         const val driftDelta = 0.07
-        const val driftCapMultiplier = 1.7
+        const val driftCapMultiplier = 1.8
         const val driftSpeedReductionMultiplier = 0.25
         const val driftSpeedMinimum = 1.3
 
         const val startupSpeedDelta = 0.17
         const val extraSpeedDelta = 0.05
         const val extraSpeedMultiplier = 1.4
-        const val backwardsSpeedMultiplier = 0.2
+        const val backwardsSpeedMultiplier = 0.25
     }
 }
