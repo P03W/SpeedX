@@ -3,6 +3,7 @@
   "package": "mc.speedx.main.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "BipedEntityModelMixin"
   ],
   "client": [
   ],
